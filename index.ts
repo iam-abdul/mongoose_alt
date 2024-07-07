@@ -1,12 +1,23 @@
 import { Db, MongoClient } from "mongodb";
 import { Collection } from "mongodb";
 
-type DeepPartial<T> = T extends object
+export type DeepPartial<T> = T extends object
   ? {
       [P in keyof T]?: DeepPartial<T[P]>;
     }
   : T;
-class BaseFind {}
+
+class BaseFind<Coll> {
+  private filter: DeepPartial<Coll>;
+
+  constructor(filter: DeepPartial<Coll>) {
+    this.filter = filter;
+  }
+
+  someOther<T extends typeof this.filter>(key: T) {
+    return key;
+  }
+}
 
 class BaseCollection<Coll> {
   private db: Db;
@@ -17,18 +28,15 @@ class BaseCollection<Coll> {
   }
 
   // async find<K extends Coll>(key: DeepPartial<K>): Promise<Coll | null> {}
-  find<K extends Coll>(key: DeepPartial<K>) {}
+  find<K extends Coll>(filterCondition: DeepPartial<K>): BaseFind<Coll> {
+    return new BaseFind<Coll>(filterCondition);
+  }
 }
 
 class BetterGoose<DB> {
   private static URI: string;
   private static Database: string;
   private static db: Db | null;
-
-  // async collection<K extends keyof DB & string>(key: K): Promise<Collection> {
-  //   // const dbInstance = await this.getInstance();
-  //   return dbInstance.collection(key);
-  // }
 
   constructor(uri: string, database: string) {
     BetterGoose.URI = uri;
@@ -59,17 +67,14 @@ class BetterGoose<DB> {
 
 export default BetterGoose;
 
-class find {}
+// class BaseFind<Coll> {
+//   private filter: DeepPartial<Coll>;
 
-// class collection {
-//   private name: string;
-//   private db: Db;
-//   private collection: Collection;
-//   constructor(db: Db, name: keyof Coll extends string ? keyof Coll : never) {
-//     this.name = name;
-//     this.db = db;
-//     this.collection = db.collection(this.name);
+//   constructor(filter: DeepPartial<Coll>) {
+//     this.filter = filter;
+//   }
+
+//   someOther<T extends typeof this.filter>(key: T) {
+//     return key;
 //   }
 // }
-
-// export type TCollections = Record<string, Record<string, IString | IInt>>;
