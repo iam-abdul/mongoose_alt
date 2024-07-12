@@ -1,5 +1,12 @@
-import { IDb } from "./test/rough.js";
-import { DeepPartial } from "./index.js";
+type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;
+
+type FilterStringKeys<T> = {
+  [K in keyof T]: K extends string ? K : never;
+}[keyof T];
 
 interface Test {
   name: string;
@@ -7,35 +14,35 @@ interface Test {
 }
 
 // the match stage should return what ever the collection passed to it
-type MatchStageInput<Coll> = Record<"$match", DeepPartial<Coll>>;
+type MatchStage<Coll> = Record<"$match", DeepPartial<Coll>>;
+type ProjectStage<Coll> = Record<"$project", Record<keyof Coll, 0 | 1>>;
 
-type ProjectStageInput<Coll> = Record<"$project", DeepPartial<Coll>>;
+type Pipeline<Coll> = MatchStage<Coll> | ProjectStage<Coll>;
 
-type Pipeline<Coll> = MatchStageInput<Coll> | ProjectStageInput<Coll>;
+interface ITest {
+  name: string;
+  email: string;
+  verified: boolean;
+}
 
-// the project stage should return only the filters passed to it
-
-// class BaseMatch<Coll> {
-//   private condition: MatchStageInput<Coll>;
-//   constructor(condition: MatchStageInput<Coll>, pipeline: Pipeline<Coll>) {
-//     this.condition = condition;
-//   }
-// }
-
-class BaseAggregate<Coll> {
-  private pipeline: Pipeline<Coll>[] = [];
+class BaseAggregate<T> {
+  private pipeline: Pipeline<T>[] = [];
   constructor(initialPipeline?: typeof this.pipeline) {
     if (initialPipeline) {
       this.pipeline = initialPipeline;
     }
   }
 
-  match(stageInput: DeepPartial<Coll>) {
-    return new BaseAggregate<Coll>([...this.pipeline, { $match: stageInput }]);
+  match(stageInput: DeepPartial<T>) {
+    return new BaseAggregate<T>([...this.pipeline, { $match: stageInput }]);
   }
 
-  project(stageInput: DeepPartial<Coll>) {
-    return new BaseAggregate<Coll>([
+  projectActual<R extends Record<keyof T, 0 | 1>>(stageInput: R) {
+    type Output = {
+      [K in keyof T as R[K] extends 1 ? K : never]: T[K];
+    };
+
+    return new BaseAggregate<Output>([
       ...this.pipeline,
       { $project: stageInput },
     ]);
@@ -49,6 +56,10 @@ class BaseAggregate<Coll> {
 const agg = new BaseAggregate<Test>()
   .match({ name: "abdul" })
   .match({ email: "sir abdul" })
-  .project({ name: "one" });
+  // .project({ email: "abd@mail.com", newProperty: "something", something: true })
+  .match({ email: "sir" })
+  // .project({});
+  .projectActual({ email: 0, name: 1 })
+  .match({ name: "hai" });
 
 agg.logPipeline();
