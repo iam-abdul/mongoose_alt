@@ -4,4 +4,6 @@ package-lock.json
 dist
 proud.ts
 
+*.js
+**/*.js
 test
