@@ -1,24 +1,6 @@
-type DeepPartial<T> = T extends object
-  ? {
-      [P in keyof T]?: DeepPartial<T[P]>;
-    }
-  : T;
-
-type ZeroOrOne<T> = {
-  [k in keyof T]: T[k] extends object ? ZeroOrOne<T[k]> : 0 | 1;
-};
-
-type ProjectOutput<T, R extends ZeroOrOne<T>> = {
-  [K in keyof T as R[K] extends 1 | object ? K : never]: T[K] extends object
-    ? ProjectOutput<T[K], R[K] & ZeroOrOne<T[K]>>
-    : T[K];
-};
-
+import { MatchStageInput } from "./match.js";
+import { Pipeline } from "./pipeline.js";
 // the match stage should return what ever the collection passed to it
-type MatchStage<Coll> = Record<"$match", DeepPartial<Coll>>;
-type ProjectStage<Coll> = Record<"$project", ZeroOrOne<Coll>>;
-
-type Pipeline<Coll> = MatchStage<Coll> | ProjectStage<Coll>;
 
 interface database {
   users: ITest;
@@ -41,17 +23,17 @@ export class BaseAggregate<DB extends object, T> {
     }
   }
 
-  match(stageInput: DeepPartial<T>) {
+  match(stageInput: MatchStageInput<T>) {
     return new BaseAggregate<DB, T>([...this.pipeline, { $match: stageInput }]);
   }
 
-  project<R extends ZeroOrOne<T>>(stageInput: R) {
-    const newPipeline: Pipeline<T>[] = [
-      ...this.pipeline,
-      { $project: stageInput },
-    ];
-    return new BaseAggregate<DB, ProjectOutput<T, R>>(newPipeline);
-  }
+  // project<R extends ZeroOrOne<T>>(stageInput: R) {
+  //   const newPipeline: Pipeline<T>[] = [
+  //     ...this.pipeline,
+  //     { $project: stageInput },
+  //   ];
+  //   return new BaseAggregate<DB, ProjectOutput<T, R>>(newPipeline);
+  // }
 
   logPipeline() {
     console.log("the pipeline is ", this.pipeline);
@@ -62,12 +44,6 @@ const agg = new BaseAggregate<database, ITest>()
   .match({ name: "abdul" })
   .match({ email: "sir abdul" })
   .match({ email: "sir" })
-  .project({
-    email: 0,
-    name: 1,
-    details: { city: 1, street: 1 },
-    verified: 1,
-  })
-  .match({ details: { street: "nice", city: "delhi" } });
+  .match({ "details.city": /^nice/ });
 
 agg.logPipeline();

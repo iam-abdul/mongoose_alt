@@ -83,6 +83,9 @@ export interface IDb {
       city: "Hyderabad" | "bengaluru";
       street: string;
     };
+    followers: {
+      name: string;
+    }[];
   };
   orders: {
     price: number;
@@ -100,13 +103,14 @@ const main = async () => {
   const b = db
     .collection("users")
     .aggregate()
-    .match({ email: "somemail.com" })
+    .match({ email: "somemail.com", followers: [{ name: "new" }] })
     .project({
-      _id: 1,
+      followers: [{ name: 1 }],
+      _id: 0,
+      address: { city: 0, street: 0 },
       email: 0,
-      name: 1,
+      name: 0,
       verified: 0,
-      address: { city: 0, street: 1 },
     })
-    .match({ address: { street: "nice street" } });
+    .match({ followers: [{ name: "abdul" }] });
 };

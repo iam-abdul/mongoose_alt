@@ -5,7 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dtslint":"dtslint ./test/types"
   },
   "author": "",
   "license": "ISC",
@@ -15,6 +16,7 @@
     "typescript": "^5.5.3"
   },
   "dependencies": {
+    "@definitelytyped/dtslint": "^0.2.22",
     "mongodb": "^6.8.0",
     "mongoose": "^8.4.5",
     "ts-auto-mock": "^3.7.3"
