@@ -28,20 +28,29 @@ export type MatchStage<Coll> = Record<"$match", MatchStageInput<Coll>>;
  * $nin: Not in an array
  */
 
+type ComparisonOperators<T> = {
+  $eq?: T;
+  $ne?: T;
+  $gt?: T;
+  $gte?: T;
+  $lt?: T;
+  $lte?: T;
+  $in?: T[];
+  $nin?: T[];
+};
+
+type FieldValue<T> = T | ComparisonOperators<T>;
+
+type GetFieldType<Coll, K extends string> =
+  | GetDatatypeDiscardArray<Coll, K>
+  | GetDatatype<Coll, K>;
+
+type MatchStageStructure<Coll> = {
+  [K in FlattenKeys<Coll>]: FieldValue<GetFieldType<Coll, K>>;
+};
+
 export type MatchStageInput<Coll> = DeepPartial<
-  AllowStringsAndRegex<{
-    [k in FlattenKeys<Coll>]:
-      | GetDatatypeDiscardArray<Coll, k>
-      | GetDatatype<Coll, k>
-      | { $eq: GetDatatypeDiscardArray<Coll, k> | GetDatatype<Coll, k> }
-      | { $ne: GetDatatypeDiscardArray<Coll, k> | GetDatatype<Coll, k> }
-      | { $gt: GetDatatypeDiscardArray<Coll, k> | GetDatatype<Coll, k> }
-      | { $gte: GetDatatypeDiscardArray<Coll, k> | GetDatatype<Coll, k> }
-      | { $lt: GetDatatypeDiscardArray<Coll, k> | GetDatatype<Coll, k> }
-      | { $lte: GetDatatypeDiscardArray<Coll, k> | GetDatatype<Coll, k> }
-      | { $in: GetDatatypeDiscardArray<Coll, k>[] }
-      | { $nin: GetDatatypeDiscardArray<Coll, k>[] };
-  }>
+  AllowStringsAndRegex<MatchStageStructure<Coll>>
 >;
 
 interface IDatabase {
@@ -72,4 +81,5 @@ const a = db
     "address.pin": { $gt: 1000, $gte: 9999 },
     "address.city": { $eq: "blr" },
     "followers.id": { $in: [1, 2, 3] },
+    tags: { $in: ["abd", /^nice/] },
   });
