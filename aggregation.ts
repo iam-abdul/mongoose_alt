@@ -44,6 +44,6 @@ const agg = new BaseAggregate<database, ITest>()
   .match({ name: "abdul" })
   .match({ email: "sir abdul" })
   .match({ email: "sir" })
-  .match({ "details.city": /^nice/ });
+  .match({ "details.city": "delhi" });
 
 agg.logPipeline();

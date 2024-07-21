@@ -1,6 +1,7 @@
 import {
   DeepPartial,
   FlattenKeys,
+  FlattenWithValues,
   GetDatatype,
   GetDatatypeDiscardArray,
   AllowStringsAndRegex,
@@ -39,19 +40,38 @@ type ComparisonOperators<T> = {
   $nin?: T[];
 };
 
+/**
+ * #3. Logical query operators
+ * $and
+ * $or
+ * $not
+ * $nor
+ */
+
+type LogicalOperators<Coll> = {
+  $and?: MatchStageStructure<Coll>[];
+  $or?: MatchStageStructure<Coll>[];
+  $not?: MatchStageStructure<Coll>;
+  $nor?: MatchStageStructure<Coll>[];
+};
+
 type FieldValue<T> = T | ComparisonOperators<T>;
 
 type GetFieldType<Coll, K extends string> =
   | GetDatatypeDiscardArray<Coll, K>
   | GetDatatype<Coll, K>;
 
-type MatchStageStructure<Coll> = {
-  [K in FlattenKeys<Coll>]: FieldValue<GetFieldType<Coll, K>>;
-};
+// type MatchStageStructure<Coll> =
+//   | {
+//       [K in FlattenKeys<Coll>]?: FieldValue<GetFieldType<Coll, K>>;
+//     }
+//   | LogicalOperators<Coll>;
 
-export type MatchStageInput<Coll> = DeepPartial<
-  AllowStringsAndRegex<MatchStageStructure<Coll>>
->;
+type MatchStageStructure<Coll> =
+  | FlattenWithValues<Coll>
+  | LogicalOperators<Coll>;
+
+export type MatchStageInput<Coll> = MatchStageStructure<Coll>;
 
 interface IDatabase {
   users: {
@@ -70,16 +90,60 @@ interface IDatabase {
     }[];
   };
 }
+
+type user = IDatabase["users"];
+
+type flat = {};
+
 const db = new BetterGoose<IDatabase>("some uri", "dev");
 
+// TODO: Add followers.0.id support
 const a = db
   .collection("users")
   .aggregate()
   .match({
-    name: { $eq: "nice" },
+    name: "ok",
     "followers.name": /^nice/,
     "address.pin": { $gt: 1000, $gte: 9999 },
     "address.city": { $eq: "blr" },
     "followers.id": { $in: [1, 2, 3] },
-    tags: { $in: ["abd", /^nice/] },
+    tags: { $in: ["nice", /^sir/] },
+    "followers.7.verified": false,
+    $and: [
+      {
+        tags: { $in: ["nice"] },
+      },
+      {
+        tags: { $nin: [/^bad/] },
+      },
+      {
+        $or: [{}],
+      },
+    ],
   });
+
+// const b = db
+//   .collection("users")
+//   .aggregate()
+//   .match({
+//     $and: [
+//       {
+//         name: "abdul",
+//       },
+//       {
+//         "address.pin": { $gt: 5000 },
+//       },
+//       {
+//         $or: [
+//           {
+//             "address.city": { $eq: "blr" },
+//           },
+//         ],
+//       },
+//     ],
+//   });
+
+const c = db.collection("users").aggregate().match({
+  "followers.$.id": 77,
+  "followers.name": "son",
+});

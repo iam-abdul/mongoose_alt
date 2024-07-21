@@ -18,6 +18,43 @@ export type FlattenKeys<T, Prefix extends string = ""> = {
     : `${Prefix}${K & string}`;
 }[keyof T];
 
+type ComparisonOperators<T> = {
+  $eq?: T;
+  $ne?: T;
+  $gt?: T;
+  $gte?: T;
+  $lt?: T;
+  $lte?: T;
+  $in?: T[];
+  $all?: T[];
+  $nin?: T[];
+};
+
+export type FlattenWithValues<T, Prefix extends string = ""> = {
+  [K in keyof T]: T[K] extends (infer U)[]
+    ? U extends object
+      ?
+          | FlattenWithValues<U, `${Prefix}${string & K}.$.`>
+          | FlattenWithValues<U, `${Prefix}${string & K}.`>
+          | FlattenWithValues<U, `${Prefix}${string & K}.${number}.`>
+      : {
+          [P in `${Prefix}${string & K}`]: U extends string
+            ? string extends U
+              ? string | RegExp | ComparisonOperators<string | RegExp>
+              : U
+            : U[] | ComparisonOperators<U[]>;
+        }
+    : T[K] extends object
+    ? FlattenWithValues<T[K], `${Prefix}${string & K}.`>
+    : {
+        [P in `${Prefix}${string & K}`]: T[K] extends string
+          ? string extends T[K]
+            ? string | RegExp
+            : T[K] | ComparisonOperators<T[K]>
+          : T[K] | ComparisonOperators<T[K]>;
+      };
+}[keyof T];
+
 export type GetDatatype<T, K extends string> = K extends keyof T
   ? T[K]
   : K extends `${infer F}.${infer R}`
@@ -43,10 +80,26 @@ export type GetDatatypeDiscardArray<T, K extends string> = K extends keyof T
 export type Generated<T> = T | undefined;
 
 export type IfStringAllowRegexToo<T> = T extends string ? T | RegExp : T;
+// export type AllowStringsAndRegex<T> = T extends (infer U)[]
+//   ? AllowStringsAndRegex<U>[]
+//   : T extends object
+//   ? { [K in keyof T]: AllowStringsAndRegex<T[K]> }
+//   : T extends string
+//   ? string | RegExp
+//   : T;
+
+type LiteralString<T> = T extends string
+  ? string extends T
+    ? never
+    : T
+  : never;
+
 export type AllowStringsAndRegex<T> = T extends (infer U)[]
   ? AllowStringsAndRegex<U>[]
   : T extends object
   ? { [K in keyof T]: AllowStringsAndRegex<T[K]> }
   : T extends string
-  ? string | RegExp
+  ? LiteralString<T> extends never
+    ? string | RegExp
+    : T
   : T;
