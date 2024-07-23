@@ -22,10 +22,10 @@ class BaseFind<Coll> {
 
 class BaseCollection<DB extends object, Coll> {
   private db: Db;
-  private name: string;
+  private collectionName: string;
   constructor(db: Db, name: string) {
     this.db = db;
-    this.name = name;
+    this.collectionName = name;
   }
 
   find<K extends Coll>(filterCondition: DeepPartial<K>): BaseFind<Coll> {
@@ -33,7 +33,7 @@ class BaseCollection<DB extends object, Coll> {
   }
 
   aggregate(): BaseAggregate<DB, Coll> {
-    return new BaseAggregate<DB, Coll>([]);
+    return new BaseAggregate<DB, Coll>(this.db, this.collectionName, []);
   }
 }
 
@@ -104,13 +104,13 @@ const main = async () => {
     .collection("users")
     .aggregate()
     .match({ email: "somemail.com", followers: [{ name: "new" }] })
-    .project({
-      followers: [{ name: 1 }],
-      _id: 0,
-      address: { city: 0, street: 0 },
-      email: 0,
-      name: 0,
-      verified: 0,
-    })
+    // .project({
+    //   followers: [{ name: 1 }],
+    //   _id: 0,
+    //   address: { city: 0, street: 0 },
+    //   email: 0,
+    //   name: 0,
+    //   verified: 0,
+    // })
     .match({ followers: [{ name: "abdul" }] });
 };

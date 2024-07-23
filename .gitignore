@@ -7,3 +7,5 @@ proud.ts
 *.js
 **/*.js
 test
+
+.env

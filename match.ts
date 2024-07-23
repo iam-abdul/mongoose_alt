@@ -1,13 +1,36 @@
-import {
-  DeepPartial,
-  FlattenKeys,
-  FlattenWithValues,
-  GetDatatype,
-  GetDatatypeDiscardArray,
-  AllowStringsAndRegex,
-} from "./utils.js";
+import { DeepPartial, Prettify } from "./utils.js";
 import BetterGoose from "./index.js";
 export type MatchStage<Coll> = Record<"$match", MatchStageInput<Coll>>;
+
+export type FlattenWithValues<T, Prefix extends string = ""> = {
+  [K in keyof T]: T[K] extends (infer U)[]
+    ? U extends object
+      ?
+          | DeepPartial<{
+              [P in `${Prefix}${string & K}`]: T[K];
+            }>
+          | (
+              | FlattenWithValues<U, `${Prefix}${string & K}.$.`>
+              | FlattenWithValues<U, `${Prefix}${string & K}.`>
+              | FlattenWithValues<U, `${Prefix}${string & K}.${number}.`>
+            )
+      : {
+          [P in `${Prefix}${string & K}`]: U extends string
+            ? string extends U
+              ? string | RegExp | ComparisonOperators<string | RegExp>
+              : U
+            : U[] | ComparisonOperators<U[]>;
+        }
+    : T[K] extends object
+    ? FlattenWithValues<T[K], `${Prefix}${string & K}.`>
+    : {
+        [P in `${Prefix}${string & K}`]: T[K] extends string
+          ? string extends T[K]
+            ? string | RegExp
+            : T[K] | ComparisonOperators<T[K]>
+          : T[K] | ComparisonOperators<T[K]>;
+      };
+}[keyof T];
 
 // LHS for match stage is flatten keys
 // RHS for match stage
@@ -55,23 +78,11 @@ type LogicalOperators<Coll> = {
   $nor?: MatchStageStructure<Coll>[];
 };
 
-type FieldValue<T> = T | ComparisonOperators<T>;
-
-type GetFieldType<Coll, K extends string> =
-  | GetDatatypeDiscardArray<Coll, K>
-  | GetDatatype<Coll, K>;
-
-// type MatchStageStructure<Coll> =
-//   | {
-//       [K in FlattenKeys<Coll>]?: FieldValue<GetFieldType<Coll, K>>;
-//     }
-//   | LogicalOperators<Coll>;
-
 type MatchStageStructure<Coll> =
   | FlattenWithValues<Coll>
   | LogicalOperators<Coll>;
 
-export type MatchStageInput<Coll> = MatchStageStructure<Coll>;
+export type MatchStageInput<Coll> = Prettify<MatchStageStructure<Coll>>;
 
 interface IDatabase {
   users: {
@@ -122,28 +133,39 @@ const a = db
     ],
   });
 
-// const b = db
-//   .collection("users")
-//   .aggregate()
-//   .match({
-//     $and: [
-//       {
-//         name: "abdul",
-//       },
-//       {
-//         "address.pin": { $gt: 5000 },
-//       },
-//       {
-//         $or: [
-//           {
-//             "address.city": { $eq: "blr" },
-//           },
-//         ],
-//       },
-//     ],
-//   });
+const b = db
+  .collection("users")
+  .aggregate()
+  .match({
+    $and: [
+      {
+        name: "abdul",
+      },
+      {
+        "address.pin": { $gt: 5000 },
+      },
+      {
+        $or: [
+          {
+            "address.city": { $eq: "blr" },
+          },
+        ],
+      },
+    ],
+  });
 
-const c = db.collection("users").aggregate().match({
-  "followers.$.id": 77,
-  "followers.name": "son",
-});
+const c = db
+  .collection("users")
+  .aggregate()
+  .match({
+    followers: [{ id: 4 }],
+  });
+
+const d = db
+  .collection("users")
+  .aggregate()
+  .match({
+    "followers.$.id": 77,
+    "followers.name": "son",
+  })
+  .execute();

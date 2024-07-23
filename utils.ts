@@ -1,3 +1,5 @@
+import { ObjectId } from "mongodb";
+
 export type DeepPartial<T> = T extends object
   ? {
       [P in keyof T]?: DeepPartial<T[P]>;
@@ -30,31 +32,6 @@ type ComparisonOperators<T> = {
   $nin?: T[];
 };
 
-export type FlattenWithValues<T, Prefix extends string = ""> = {
-  [K in keyof T]: T[K] extends (infer U)[]
-    ? U extends object
-      ?
-          | FlattenWithValues<U, `${Prefix}${string & K}.$.`>
-          | FlattenWithValues<U, `${Prefix}${string & K}.`>
-          | FlattenWithValues<U, `${Prefix}${string & K}.${number}.`>
-      : {
-          [P in `${Prefix}${string & K}`]: U extends string
-            ? string extends U
-              ? string | RegExp | ComparisonOperators<string | RegExp>
-              : U
-            : U[] | ComparisonOperators<U[]>;
-        }
-    : T[K] extends object
-    ? FlattenWithValues<T[K], `${Prefix}${string & K}.`>
-    : {
-        [P in `${Prefix}${string & K}`]: T[K] extends string
-          ? string extends T[K]
-            ? string | RegExp
-            : T[K] | ComparisonOperators<T[K]>
-          : T[K] | ComparisonOperators<T[K]>;
-      };
-}[keyof T];
-
 export type GetDatatype<T, K extends string> = K extends keyof T
   ? T[K]
   : K extends `${infer F}.${infer R}`
@@ -77,7 +54,7 @@ export type GetDatatypeDiscardArray<T, K extends string> = K extends keyof T
     : never
   : never;
 
-export type Generated<T> = T | undefined;
+export type Generated<T = ObjectId> = T | undefined;
 
 export type IfStringAllowRegexToo<T> = T extends string ? T | RegExp : T;
 // export type AllowStringsAndRegex<T> = T extends (infer U)[]
@@ -103,3 +80,7 @@ export type AllowStringsAndRegex<T> = T extends (infer U)[]
     ? string | RegExp
     : T
   : T;
+
+export type Prettify<T> = {
+  [K in keyof T]: T[K];
+} & {};
