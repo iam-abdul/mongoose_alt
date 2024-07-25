@@ -1,4 +1,4 @@
-import { DeepPartial, Prettify } from "./utils.js";
+import { DeepPartial, XOR, Prettify } from "./utils.js";
 import BetterGoose from "./index.js";
 export type MatchStage<Coll> = Record<"$match", MatchStageInput<Coll>>;
 
@@ -6,21 +6,27 @@ export type FlattenWithValues<T, Prefix extends string = ""> = {
   [K in keyof T]: T[K] extends (infer U)[]
     ? U extends object
       ?
-          | DeepPartial<{
-              [P in `${Prefix}${string & K}`]: T[K];
-            }>
-          | (
-              | FlattenWithValues<U, `${Prefix}${string & K}.$.`>
-              | FlattenWithValues<U, `${Prefix}${string & K}.`>
-              | FlattenWithValues<U, `${Prefix}${string & K}.${number}.`>
-            )
-      : {
-          [P in `${Prefix}${string & K}`]: U extends string
-            ? string extends U
-              ? string | RegExp | ComparisonOperators<string | RegExp>
-              : U
-            : U[] | ComparisonOperators<U[]>;
-        }
+          | FlattenWithValues<U, `${Prefix}${string & K}.$.`>
+          | FlattenWithValues<U, `${Prefix}${string & K}.`>
+          | FlattenWithValues<U, `${Prefix}${string & K}.${number}.`>
+          | {
+              [Q in `${Prefix}${string & K}`]?: XOR<
+                XOR<arraySize, elemMatch<U>>,
+                DeepPartial<U | U[]>
+              >;
+            }
+      :
+          | {
+              [P in `${Prefix}${string & K}`]: U extends string
+                ? string extends U
+                  ?
+                      | string
+                      | RegExp
+                      | ComparisonOperators<string | RegExp>
+                      | { $size: number }
+                  : U
+                : U[] | ComparisonOperators<U[]> | arraySize;
+            }
     : T[K] extends object
     ? FlattenWithValues<T[K], `${Prefix}${string & K}.`>
     : {
@@ -77,6 +83,18 @@ type LogicalOperators<Coll> = {
   $not?: MatchStageStructure<Coll>;
   $nor?: MatchStageStructure<Coll>[];
 };
+
+/**
+ * $size operator is used when result is of type array
+ */
+
+type arraySize = Record<"$size", number>;
+
+/**
+ * $elemMatch operator can only used on any array fields
+ */
+
+type elemMatch<T> = { $elemMatch: MatchStageStructure<T> };
 
 type MatchStageStructure<Coll> =
   | FlattenWithValues<Coll>
@@ -167,5 +185,9 @@ const d = db
   .match({
     "followers.$.id": 77,
     "followers.name": "son",
+    followers: { $size: 99 },
+    tags: { $ne: "one" },
   })
   .execute();
+
+const e = db.collection("users").aggregate().match({ followers: {} }).execute();
