@@ -85,7 +85,17 @@ export type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
+// type Without<T, U> = { [P in Exclude<keyof T, keyof U>]?: never };
+// export type XOR<T, U> = T | U extends object
+//   ? (Without<T, U> & U) | (Without<U, T> & T)
+//   : T | U;
+
 type Without<T, U> = { [P in Exclude<keyof T, keyof U>]?: never };
-export type XOR<T, U> = T | U extends object
-  ? (Without<T, U> & U) | (Without<U, T> & T)
-  : T | U;
+
+export type XOR<T extends any[]> = T extends [infer Only]
+  ? Only
+  : T extends [infer First, ...infer Rest]
+  ?
+      | (Without<First, XOR<Rest>> & XOR<Rest>)
+      | (Without<XOR<Rest>, First> & First)
+  : never;

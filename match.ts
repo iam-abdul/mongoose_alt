@@ -11,8 +11,7 @@ export type FlattenWithValues<T, Prefix extends string = ""> = {
           | FlattenWithValues<U, `${Prefix}${string & K}.${number}.`>
           | {
               [Q in `${Prefix}${string & K}`]?: XOR<
-                XOR<arraySize, elemMatch<U>>,
-                DeepPartial<U | U[]>
+                [arraySize, elemMatch<U>, DeepPartial<U | U[]>]
               >;
             }
       :
@@ -22,17 +21,22 @@ export type FlattenWithValues<T, Prefix extends string = ""> = {
                   ?
                       | string
                       | RegExp
-                      | ComparisonOperators<string | RegExp>
+                      | ComparisonOperators<U>
+                      | ComparisonOperators<U[]>
                       | { $size: number }
+                      | U[]
                   : U
                 : U[] | ComparisonOperators<U[]> | arraySize;
             }
     : T[K] extends object
-    ? FlattenWithValues<T[K], `${Prefix}${string & K}.`>
+    ?
+        | FlattenWithValues<T[K], `${Prefix}${string & K}.`>
+        | { [H in `${Prefix}${string & K}`]: T[K] }
     : {
         [P in `${Prefix}${string & K}`]: T[K] extends string
           ? string extends T[K]
-            ? string | RegExp
+            ? // this is for non enum strings
+              string | RegExp | ComparisonOperators<string | RegExp>
             : T[K] | ComparisonOperators<T[K]>
           : T[K] | ComparisonOperators<T[K]>;
       };
@@ -101,93 +105,3 @@ type MatchStageStructure<Coll> =
   | LogicalOperators<Coll>;
 
 export type MatchStageInput<Coll> = Prettify<MatchStageStructure<Coll>>;
-
-interface IDatabase {
-  users: {
-    name: string;
-    verified: boolean;
-    address: {
-      city: "hyd" | "blr";
-      pin: number;
-    };
-    tags: string[];
-    trends: ["#nice", "#great"];
-    followers: {
-      name: string;
-      id: number;
-      verified: boolean;
-    }[];
-  };
-}
-
-type user = IDatabase["users"];
-
-type flat = {};
-
-const db = new BetterGoose<IDatabase>("some uri", "dev");
-
-// TODO: Add followers.0.id support
-const a = db
-  .collection("users")
-  .aggregate()
-  .match({
-    name: "ok",
-    "followers.name": /^nice/,
-    "address.pin": { $gt: 1000, $gte: 9999 },
-    "address.city": { $eq: "blr" },
-    "followers.id": { $in: [1, 2, 3] },
-    tags: { $in: ["nice", /^sir/] },
-    "followers.7.verified": false,
-    $and: [
-      {
-        tags: { $in: ["nice"] },
-      },
-      {
-        tags: { $nin: [/^bad/] },
-      },
-      {
-        $or: [{}],
-      },
-    ],
-  });
-
-const b = db
-  .collection("users")
-  .aggregate()
-  .match({
-    $and: [
-      {
-        name: "abdul",
-      },
-      {
-        "address.pin": { $gt: 5000 },
-      },
-      {
-        $or: [
-          {
-            "address.city": { $eq: "blr" },
-          },
-        ],
-      },
-    ],
-  });
-
-const c = db
-  .collection("users")
-  .aggregate()
-  .match({
-    followers: [{ id: 4 }],
-  });
-
-const d = db
-  .collection("users")
-  .aggregate()
-  .match({
-    "followers.$.id": 77,
-    "followers.name": "son",
-    followers: { $size: 99 },
-    tags: { $ne: "one" },
-  })
-  .execute();
-
-const e = db.collection("users").aggregate().match({ followers: {} }).execute();
