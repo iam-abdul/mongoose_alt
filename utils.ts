@@ -20,18 +20,6 @@ export type FlattenKeys<T, Prefix extends string = ""> = {
     : `${Prefix}${K & string}`;
 }[keyof T];
 
-type ComparisonOperators<T> = {
-  $eq?: T;
-  $ne?: T;
-  $gt?: T;
-  $gte?: T;
-  $lt?: T;
-  $lte?: T;
-  $in?: T[];
-  $all?: T[];
-  $nin?: T[];
-};
-
 export type GetDatatype<T, K extends string> = K extends keyof T
   ? T[K]
   : K extends `${infer F}.${infer R}`
@@ -57,13 +45,6 @@ export type GetDatatypeDiscardArray<T, K extends string> = K extends keyof T
 export type Generated<T = ObjectId> = T | undefined;
 
 export type IfStringAllowRegexToo<T> = T extends string ? T | RegExp : T;
-// export type AllowStringsAndRegex<T> = T extends (infer U)[]
-//   ? AllowStringsAndRegex<U>[]
-//   : T extends object
-//   ? { [K in keyof T]: AllowStringsAndRegex<T[K]> }
-//   : T extends string
-//   ? string | RegExp
-//   : T;
 
 type LiteralString<T> = T extends string
   ? string extends T
@@ -85,17 +66,24 @@ export type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
-// type Without<T, U> = { [P in Exclude<keyof T, keyof U>]?: never };
-// export type XOR<T, U> = T | U extends object
-//   ? (Without<T, U> & U) | (Without<U, T> & T)
-//   : T | U;
-
 type Without<T, U> = { [P in Exclude<keyof T, keyof U>]?: never };
 
-export type XOR<T extends any[]> = T extends [infer Only]
-  ? Only
-  : T extends [infer First, ...infer Rest]
-  ?
-      | (Without<First, XOR<Rest>> & XOR<Rest>)
-      | (Without<XOR<Rest>, First> & First)
-  : never;
+export type XOR_6<T, U> = T | U extends object
+  ? (Without<T, U> & U) | (Without<U, T> & T)
+  : T | U;
+
+// export type XOR_3<T, U, V> = T | U | V extends object
+//   ? (Without<T, U | V> & T) | (Without<U, T | V> & U) | (Without<V, T | U> & V)
+//   : T | U | V;
+
+// type Without<T, U> = { [P in Exclude<keyof T, keyof U>]?: never };
+
+// export type XOR<T extends any[]> = Prettify<
+//   T extends [infer Only]
+//     ? Only
+//     : T extends [infer First, ...infer Rest]
+//     ?
+//         | (Without<First, XOR<Rest>> & XOR<Rest>)
+//         | (Without<XOR<Rest>, First> & First)
+//     : never
+// >;

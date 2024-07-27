@@ -1,37 +1,81 @@
-import { DeepPartial, XOR, Prettify } from "./utils.js";
+import { DeepPartial, Prettify } from "./utils.js";
 import BetterGoose from "./index.js";
+import { XOR } from "ts-xor";
+import { XOR_6 } from "./utils.js";
+
 export type MatchStage<Coll> = Record<"$match", MatchStageInput<Coll>>;
+
+type objectInsideArray<Prefix extends string, K, U> =
+  | FlattenWithValues<
+      U,
+      `${Prefix}${string & K}.$.` | `${Prefix}${string & K}.${number}.`
+    >
+  | FlattenWithValues<U, `${Prefix}${string & K}.`>
+  | {
+      [Q in `${Prefix}${string & K}`]?: XOR_6<
+        arraySize,
+        XOR_6<
+          elemMatch<U>,
+          XOR_6<ComparisonOperators<U>, ComparisonOperators<U[]>>
+        >
+      >;
+    };
+
+// type primitivesInsideArray<Prefix extends string, K, U> = {
+//   [P in `${Prefix}${string & K}`]: U extends string
+//     ? string extends U
+//       ?
+//           | string
+//           | RegExp
+//           | ComparisonOperators<U>
+//           | ComparisonOperators<U[]>
+//           | elemMatch<U>
+//           | arraySize
+//           | U[]
+//       : U
+//     : U[] | ComparisonOperators<U> | arraySize;
+// };
+
+type primitivesInsideArray<Prefix extends string, K, U> = {
+  [P in `${Prefix}${string & K}`]: U extends string
+    ? string extends U
+      ? XOR_6<
+          string | RegExp,
+          XOR_6<
+            arraySize,
+            XOR_6<
+              elemMatch<U>,
+              XOR_6<
+                elemMatch<U[]>,
+                XOR_6<ComparisonOperators<U>, ComparisonOperators<U[]>>
+              >
+            >
+          >
+        >
+      : U
+    : U[] | ComparisonOperators<U> | arraySize;
+};
+
+type justObjects<Prefix extends string, K, T> =
+  | FlattenWithValues<T, `${Prefix}${string & K}.`>
+  | { [H in `${Prefix}${string & K}`]: T };
 
 export type FlattenWithValues<T, Prefix extends string = ""> = {
   [K in keyof T]: T[K] extends (infer U)[]
     ? U extends object
-      ?
-          | FlattenWithValues<U, `${Prefix}${string & K}.$.`>
-          | FlattenWithValues<U, `${Prefix}${string & K}.`>
-          | FlattenWithValues<U, `${Prefix}${string & K}.${number}.`>
-          | {
-              [Q in `${Prefix}${string & K}`]?: XOR<
-                [arraySize, elemMatch<U>, DeepPartial<U | U[]>]
-              >;
-            }
-      :
-          | {
-              [P in `${Prefix}${string & K}`]: U extends string
-                ? string extends U
-                  ?
-                      | string
-                      | RegExp
-                      | ComparisonOperators<U>
-                      | ComparisonOperators<U[]>
-                      | { $size: number }
-                      | U[]
-                  : U
-                : U[] | ComparisonOperators<U[]> | arraySize;
-            }
+      ? /**
+         * This part is for array of objects
+         */
+        objectInsideArray<Prefix, K, U>
+      : /**
+         * This part is for array of primitives
+         */
+        primitivesInsideArray<Prefix, K, U>
     : T[K] extends object
-    ?
-        | FlattenWithValues<T[K], `${Prefix}${string & K}.`>
-        | { [H in `${Prefix}${string & K}`]: T[K] }
+    ? /**
+       * This part is for objects
+       */
+      justObjects<Prefix, K, T[K]>
     : {
         [P in `${Prefix}${string & K}`]: T[K] extends string
           ? string extends T[K]
