@@ -1,6 +1,5 @@
 import { DeepPartial, Prettify } from "./utils.js";
 import BetterGoose from "./index.js";
-import { XOR } from "ts-xor";
 import { XOR_6 } from "./utils.js";
 
 export type MatchStage<Coll> = Record<"$match", MatchStageInput<Coll>>;
@@ -70,7 +69,25 @@ export type FlattenWithValues<T, Prefix extends string = ""> = {
       : /**
          * This part is for array of primitives
          */
-        primitivesInsideArray<Prefix, K, U>
+        {
+          [P in `${Prefix}${string & K}`]: U extends string
+            ? string extends U
+              ? XOR_6<
+                  string | RegExp,
+                  XOR_6<
+                    arraySize,
+                    XOR_6<
+                      elemMatch<U>,
+                      XOR_6<
+                        elemMatch<U[]>,
+                        XOR_6<ComparisonOperators<U>, ComparisonOperators<U[]>>
+                      >
+                    >
+                  >
+                >
+              : U
+            : U[] | ComparisonOperators<U> | arraySize;
+        }
     : T[K] extends object
     ? /**
        * This part is for objects
@@ -85,6 +102,45 @@ export type FlattenWithValues<T, Prefix extends string = ""> = {
           : T[K] | ComparisonOperators<T[K]>;
       };
 }[keyof T];
+
+type FlattenWithValues2<T, Prefix extends string = ""> = T extends object
+  ? {
+      [K in keyof T]: T[K] extends (infer U)[]
+        ? U extends object
+          ? objectInsideArray<Prefix, K, U>
+          : {
+              [P in `${Prefix}${string & K}`]: U extends string
+                ? string extends U
+                  ? XOR_6<
+                      string | RegExp,
+                      XOR_6<
+                        arraySize,
+                        XOR_6<
+                          elemMatch<U>,
+                          XOR_6<
+                            elemMatch<U[]>,
+                            XOR_6<
+                              ComparisonOperators<U>,
+                              ComparisonOperators<U[]>
+                            >
+                          >
+                        >
+                      >
+                    >
+                  : U
+                : U[] | ComparisonOperators<U> | arraySize;
+            }
+        : T[K] extends object
+        ? justObjects<Prefix, K, T[K]>
+        : {
+            [P in `${Prefix}${string & K}`]: T[K] extends string
+              ? string extends T[K]
+                ? string | RegExp | ComparisonOperators<string | RegExp>
+                : T[K] | ComparisonOperators<T[K]>
+              : T[K] | ComparisonOperators<T[K]>;
+          };
+    }[keyof T]
+  : T | ComparisonOperators<T>;
 
 // LHS for match stage is flatten keys
 // RHS for match stage
@@ -142,10 +198,10 @@ type arraySize = Record<"$size", number>;
  * $elemMatch operator can only used on any array fields
  */
 
-type elemMatch<T> = { $elemMatch: MatchStageStructure<T> };
+type elemMatch<T> = { $elemMatch: MatchStageInput<T> };
 
 type MatchStageStructure<Coll> =
-  | FlattenWithValues<Coll>
+  | FlattenWithValues2<Coll>
   | LogicalOperators<Coll>;
 
 export type MatchStageInput<Coll> = Prettify<MatchStageStructure<Coll>>;

@@ -22,7 +22,6 @@
     "vitest": "^2.0.4"
   },
   "dependencies": {
-    "mongodb": "^6.8.0",
-    "ts-xor": "^1.3.0"
+    "mongodb": "^6.8.0"
   }
 }
